@@ -9,11 +9,12 @@ from config import Logger, seed_torch
 from torch.autograd import Variable
 from utils.metrics import calculate_metrics
 from utils.fcp import FCP
-from utils.inject_fra import inject_trainable_fra_conv
+from utils.convert import AdaBN
+from utils.inject_fra import inject_trainable_fra
 from utils.sar import SAREncoder
 from utils.loss import DSATALoss
 from types import SimpleNamespace
-from networks.PraNet_Res2Net_TTA import PraNet
+from networks.segformer import SegFormer
 from torch.utils.data import DataLoader
 from dataloaders.POLYP_dataloader import POLYP_dataset
 from dataloaders.convert_csv_to_list import convert_labeled_list
@@ -90,8 +91,10 @@ class DSATA:
 
         # Model
         self.load_model = os.path.join(config.model_root, str(config.Source_Dataset))
+        self.backbone = config.backbone
         self.in_ch = config.in_ch
         self.out_ch = config.out_ch
+        self.model = config.model
 
         # Optimizer
         self.optim = config.optimizer
@@ -148,21 +151,35 @@ class DSATA:
     def build_model(self):
         # Student model (with prompt)
         self.prompt = FCP(prompt_alpha=self.prompt_alpha, image_size=self.image_size).to(self.device)
-        self.student_model = PraNet(warm_n=self.warm_n).to(self.device)
+        self.student_model = SegFormer(
+            num_classes=self.out_ch,
+            phi=self.backbone,
+            pretrained=False,
+            convert=False,
+            newBN=AdaBN
+        ).to(self.device)
 
         # Teacher model (without prompt, EMA updated)
-        self.teacher_model = PraNet(warm_n=self.warm_n).to(self.device)
+        self.teacher_model = SegFormer(
+            num_classes=self.out_ch,
+            phi=self.backbone,
+            pretrained=False,
+            convert=False,
+            newBN=AdaBN
+        ).to(self.device)
 
         # Load pre-trained weights
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        checkpoint = torch.load(os.path.join(self.load_model, 'pretrain-PraNet.pth'), map_location=device)
+        checkpoint = torch.load(os.path.join(self.load_model, 'segf/last_epoch_weights.pth'), map_location=device)
+        if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
+            checkpoint = checkpoint['state_dict']
         self.student_model.load_state_dict(checkpoint, strict=True)
         self.teacher_model.load_state_dict(checkpoint, strict=True)
 
         # Inject FRA adapters into student model
-        fra_params, fra_names = inject_trainable_fra_conv(
+        fra_params, fra_names = inject_trainable_fra(
             model=self.student_model,
-            target_replace_module=["Bottle2neck", "BasicConv2d"],
+            target_replace_module=["CrossAttention", "Attention"],
             r=1,
             r2=128
         )
@@ -243,7 +260,6 @@ class DSATA:
             self.student_model.eval()
             self.teacher_model.eval()
             self.prompt.train()
-            self.student_model.change_BN_status(new_sample=True)
 
             # Train for n iterations
             for tr_iter in range(self.iters):
@@ -266,7 +282,6 @@ class DSATA:
                 self.optimizer.zero_grad(set_to_none=True)
                 total_loss.backward()
                 self.optimizer.step()
-                self.student_model.change_BN_status(new_sample=False)
 
                 if tr_iter == 0:
                     mask_info = self.prompt.get_mask_info()
@@ -315,6 +330,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_size', type=int, default=352)
 
     # Model
+    parser.add_argument('--backbone', type=str, default='b5', help='b0/b1/b2/b3/b4/b5')
     parser.add_argument('--in_ch', type=int, default=3)
     parser.add_argument('--out_ch', type=int, default=1)
 
@@ -355,6 +371,7 @@ if __name__ == '__main__':
 
     # Cuda
     parser.add_argument('--device', type=str, default='cuda:0')
+    parser.add_argument('--model', type=str, default='segformer')
 
     config = parser.parse_args()
 

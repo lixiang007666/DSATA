@@ -28,7 +28,6 @@ def clear_fra_features():
 
 
 class FRAInjectedLinear(nn.Module):
-    """Feature Refinement Adapter (FRA) - Injected Linear Layer"""
     def __init__(self, in_features, out_features, bias=False, r=4, r2=64):
         super().__init__()
 
@@ -51,7 +50,6 @@ class FRAInjectedLinear(nn.Module):
 
 
 class FRAInjectedConv2d(nn.Module):
-    """Feature Refinement Adapter (FRA) - Injected Conv2d Layer for CNN backbones like Res2Net"""
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, 
                  dilation=1, groups=1, bias=False, r=4, r2=64):
         super().__init__()
@@ -94,7 +92,6 @@ def inject_trainable_fra(
     r: int = 4,
     r2: int = 16,
 ):
-    """Inject FRA (Feature Refinement Adapter) into model, and returns FRA parameter groups."""
 
     require_grad_params = []
     names = []
@@ -155,7 +152,6 @@ def inject_trainable_fra_conv(
     r2: int = 16,
     max_inject_per_module: int = 2,
 ):
-    """Inject FRA (Feature Refinement Adapter) into Conv2d layers for CNN backbones."""
 
     require_grad_params = []
     names = []

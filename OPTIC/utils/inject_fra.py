@@ -28,7 +28,6 @@ def clear_fra_features():
 
 
 class FRAInjectedLinear(nn.Module):
-    """Feature Refinement Adapter (FRA) - Injected Linear Layer"""
     def __init__(self, in_features, out_features, bias=False, r=4, r2=64):
         super().__init__()
 
@@ -97,7 +96,6 @@ def inject_trainable_fra(
     r: int = 4,
     r2: int = 16,
 ):
-    """Inject FRA (Feature Refinement Adapter) into model, and returns FRA parameter groups."""
 
     require_grad_params = []
     names = []
@@ -158,9 +156,6 @@ def inject_trainable_fra_with_hooks(
     r2: int = 16,
     collect_features: bool = True,
 ):
-    """
-    Inject FRA with hooks into model for feature visualization.
-    """
 
     require_grad_params = []
     names = []
