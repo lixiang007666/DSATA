@@ -60,7 +60,6 @@ def update_ema_variables(ema_model, model, alpha_teacher):
 class DSATA:
     def __init__(self, config):
         seed_torch(42)
-        self.warm_n = config.warm_n
         time_now = datetime.datetime.now().__format__("%Y%m%d_%H%M%S_%f")
         log_root = os.path.join(config.path_save_log, 'DSATA')
         if not os.path.exists(log_root):
@@ -353,7 +352,6 @@ if __name__ == '__main__':
 
     # Hyperparameters
     parser.add_argument('--prompt_alpha', type=float, default=0.01)
-    parser.add_argument('--warm_n', type=int, default=5)
 
     # SAR loss
     parser.add_argument('--lambda_sar', type=float, default=0.01, help='Weight for SAR loss')
@@ -367,7 +365,7 @@ if __name__ == '__main__':
     # Path
     parser.add_argument('--path_save_log', type=str, default='./logs/')
     parser.add_argument('--model_root', type=str, default='./models/')
-    parser.add_argument('--dataset_root', type=str, default='/media/userdisk0/zychen/Datasets/Polyp')
+    parser.add_argument('--dataset_root', type=str, default='../Datasets/Polyp')
 
     # Cuda
     parser.add_argument('--device', type=str, default='cuda:0')
